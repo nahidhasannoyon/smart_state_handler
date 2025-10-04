@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:smart_state_handler/smart_state_handler.dart';
 
 /// A comprehensive state management widget that handles all common UI states
@@ -750,9 +751,11 @@ class SmartStateHandler<T> extends StatelessWidget {
           final maxScroll = scrollInfo.metrics.maxScrollExtent;
 
           if (maxScroll - pixels <= autoScrollThreshold && hasMoreDataToLoad) {
-            // Note: Without state management, debouncing needs to be handled externally
+            // Schedule the callback after the current frame to avoid setState during build
             _debugLog('Triggering load more data');
-            onLoadMoreData?.call();
+            SchedulerBinding.instance.addPostFrameCallback((_) {
+              onLoadMoreData?.call();
+            });
           }
         }
         return false;
