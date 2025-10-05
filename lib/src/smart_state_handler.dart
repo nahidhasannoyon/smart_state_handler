@@ -79,6 +79,13 @@ class SmartStateHandler<T> extends StatelessWidget {
     this.animationConfig = const SmartStateAnimationConfig(),
     this.customTransitionBuilder,
 
+    // Overlay Configuration (NEW!)
+    this.overlayConfig = const SmartStateOverlayConfig(),
+    this.onOverlayDismiss,
+
+    // Snackbar Configuration (NEW!)
+    this.snackbarConfig = const SmartStateSnackbarConfig(),
+
     // Icon Configuration
     this.errorIcon = Icons.error_outline,
     this.emptyIcon = Icons.inbox_outlined,
@@ -216,6 +223,21 @@ class SmartStateHandler<T> extends StatelessWidget {
     Widget child,
     Animation<double> animation,
   )? customTransitionBuilder;
+
+  // Overlay Configuration (NEW!)
+
+  /// Comprehensive overlay state configuration
+  /// Controls which states show as overlays, dismissibility, and styling
+  final SmartStateOverlayConfig overlayConfig;
+
+  /// Callback when overlay is dismissed (works with isDismissible)
+  final VoidCallback? onOverlayDismiss;
+
+  // Snackbar Configuration (NEW!)
+
+  /// Comprehensive snackbar configuration
+  /// Controls position (top/bottom), styling, and behavior
+  final SmartStateSnackbarConfig snackbarConfig;
 
   // Icon Configuration
 
