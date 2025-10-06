@@ -704,14 +704,6 @@ class _SmartStateHandlerExampleState extends State<SmartStateHandlerExample> {
               onOverlayDismiss: () {
                 if (_dismissibleOverlay) {
                   setState(() => _currentState = SmartState.initial);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('Overlay dismissed'),
-                      behavior: SnackBarBehavior.floating,
-                      backgroundColor: Colors.grey.shade800,
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
                 }
               },
 
@@ -1124,79 +1116,6 @@ class _SmartStateHandlerExampleState extends State<SmartStateHandlerExample> {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
               ),
-
-              const SizedBox(height: 16),
-
-              // Info text - Enhanced with new features
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.blue.withValues(alpha: 0.1),
-                      Colors.purple.withValues(alpha: 0.05),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            Icons.auto_awesome,
-                            color: Colors.blue[700],
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            '✨ NEW: Overlay Mode Features',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue[700],
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    _buildFeatureItem(
-                      Icons.touch_app,
-                      'Dismissible',
-                      _dismissibleOverlay
-                          ? 'Tap overlay or outside to dismiss'
-                          : 'Overlay cannot be dismissed',
-                      _dismissibleOverlay ? Colors.green : Colors.orange,
-                    ),
-                    const SizedBox(height: 8),
-                    _buildFeatureItem(
-                      Icons.palette,
-                      'Custom Styling',
-                      'Each state has unique colors & animations',
-                      Colors.purple,
-                    ),
-                    const SizedBox(height: 8),
-                    _buildFeatureItem(
-                      Icons.layers,
-                      'Persistent Content',
-                      'Form stays visible under overlay states',
-                      Colors.blue,
-                    ),
-                  ],
-                ),
-              ),
             ],
           ),
         ),
@@ -1208,147 +1127,72 @@ class _SmartStateHandlerExampleState extends State<SmartStateHandlerExample> {
     return Container(
       padding: const EdgeInsets.all(16),
       color: Colors.grey[100],
-      child: Column(
-        children: [
-          // State testing buttons
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey[300]!),
-            ),
-            child: Column(
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey[300]!),
+        ),
+        child: Column(
+          children: [
+            Row(
               children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.science_outlined,
-                      color: Theme.of(context).primaryColor,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      _enableOverlayMode
-                          ? 'Test Form States:'
-                          : 'Test List States:',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
+                Icon(
+                  Icons.science_outlined,
+                  color: Theme.of(context).primaryColor,
+                  size: 20,
                 ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _buildStateButton(
-                      'Initial',
-                      SmartState.initial,
-                      Colors.grey,
-                    ),
-                    _buildStateButton(
-                      'Loading',
-                      SmartState.loading,
-                      Colors.blue,
-                    ),
-                    _buildStateButton(
-                      'Success',
-                      SmartState.success,
-                      Colors.green,
-                    ),
-                    _buildStateButton('Error', SmartState.error, Colors.red),
-                    if (!_enableOverlayMode) ...[
-                      _buildStateButton(
-                        'Empty',
-                        SmartState.empty,
-                        Colors.orange,
-                      ),
-                      _buildStateButton(
-                        'Offline',
-                        SmartState.offline,
-                        Colors.purple,
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // Tips section with new feature highlights
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: Colors.amber.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.tips_and_updates,
-                            color: Colors.amber,
-                            size: 18,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Tips & New Features',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12,
-                              color: Colors.amber.shade900,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      if (_enableOverlayMode) ...[
-                        _buildTipItem(
-                          '✨',
-                          'Try dismissing overlay by tapping outside when enabled',
-                        ),
-                        _buildTipItem(
-                          '🎨',
-                          'Overlays have custom styling per state (loading/error/success)',
-                        ),
-                        _buildTipItem(
-                          '📝',
-                          'Fill form & submit to see realistic behavior',
-                        ),
-                      ] else ...[
-                        if (_enableSnackbar) ...[
-                          _buildTipItem(
-                            '🎯',
-                            'Snackbar shows at ${_snackbarAtTop ? "TOP" : "BOTTOM"} with retry action',
-                          ),
-                          _buildTipItem(
-                            '🔄',
-                            'Toggle position to see snackbar move!',
-                          ),
-                        ] else ...[
-                          _buildTipItem(
-                            '📱',
-                            'Try different animations: fade, scale, slide, rotate',
-                          ),
-                          _buildTipItem(
-                            '🔄',
-                            'Pull down to refresh, scroll to load more',
-                          ),
-                        ],
-                      ],
-                    ],
+                const SizedBox(width: 8),
+                Text(
+                  _enableOverlayMode
+                      ? 'Test Form States:'
+                      : 'Test List States:',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
                   ),
                 ),
               ],
             ),
-          ),
-        ],
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _buildStateButton(
+                  'Initial',
+                  SmartState.initial,
+                  Colors.grey,
+                ),
+                _buildStateButton(
+                  'Loading',
+                  SmartState.loading,
+                  Colors.blue,
+                ),
+                _buildStateButton(
+                  'Success',
+                  SmartState.success,
+                  Colors.green,
+                ),
+                _buildStateButton('Error', SmartState.error, Colors.red),
+                if (!_enableOverlayMode) ...[
+                  _buildStateButton(
+                    'Empty',
+                    SmartState.empty,
+                    Colors.orange,
+                  ),
+                  _buildStateButton(
+                    'Offline',
+                    SmartState.offline,
+                    Colors.purple,
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1396,69 +1240,6 @@ class _SmartStateHandlerExampleState extends State<SmartStateHandlerExample> {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       ),
       child: Text(label, style: const TextStyle(fontSize: 10)),
-    );
-  }
-
-  /// Helper method to build tip items
-  Widget _buildTipItem(String emoji, String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            emoji,
-            style: const TextStyle(fontSize: 14),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              text,
-              style: TextStyle(
-                fontSize: 11,
-                color: Colors.grey[800],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Helper method to build feature items in form info section
-  Widget _buildFeatureItem(
-    IconData icon,
-    String title,
-    String description,
-    Color color,
-  ) {
-    return Row(
-      children: [
-        Icon(icon, color: color, size: 16),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12,
-                  color: color,
-                ),
-              ),
-              Text(
-                description,
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: Colors.black87,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }

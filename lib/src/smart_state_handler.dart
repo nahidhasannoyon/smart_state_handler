@@ -5,7 +5,7 @@ import 'package:smart_state_handler/smart_state_handler.dart';
 /// A comprehensive state management widget that handles all common UI states
 /// with enhanced developer experience and flexible customization options.
 ///
-/// This StatefulWidget provides a clean, predictable way to handle multiple
+/// This StatelessWidget provides a clean, predictable way to handle multiple
 /// UI states with animations, memoization, and efficient rebuilds.
 ///
 /// Features:
@@ -224,16 +224,12 @@ class SmartStateHandler<T> extends StatelessWidget {
     Animation<double> animation,
   )? customTransitionBuilder;
 
-  // Overlay Configuration (NEW!)
-
   /// Comprehensive overlay state configuration
   /// Controls which states show as overlays, dismissibility, and styling
   final SmartStateOverlayConfig overlayConfig;
 
   /// Callback when overlay is dismissed (works with isDismissible)
   final VoidCallback? onOverlayDismiss;
-
-  // Snackbar Configuration (NEW!)
 
   /// Comprehensive snackbar configuration
   /// Controls position (top/bottom), styling, and behavior
@@ -283,7 +279,89 @@ class SmartStateHandler<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _buildMainContent(context);
+    // Wrap with Builder to handle snackbar display in a stateless way
+    return Builder(
+      builder: (context) {
+        // Show snackbar if enabled and in error or success state
+        if (showErrorAsSnackbar) {
+          if (currentState.isError) {
+            _scheduleSnackbar(context, SnackbarType.error);
+          } else if (currentState.isSuccess) {
+            // Only show success snackbar if configured
+            // You can add a flag to control this behavior
+            // For now, we'll show it only on explicit success state
+          }
+        }
+
+        return _buildMainContent(context);
+      },
+    );
+  }
+
+  // Track the last state we showed a snackbar for to avoid showing multiple times
+  static final Map<int, SmartState> _lastSnackbarStates = {};
+
+  void _scheduleSnackbar(BuildContext context, SnackbarType type) {
+    final widgetHash = hashCode;
+    final lastState = _lastSnackbarStates[widgetHash];
+
+    // Only schedule if we haven't shown a snackbar for this state yet
+    if (lastState != currentState) {
+      _lastSnackbarStates[widgetHash] = currentState;
+
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+
+        final config = snackbarConfig;
+        final stateConfig = config.getConfigForState(type);
+        final message = type == SnackbarType.error
+            ? (errorObject?.toString() ?? textConfig.defaultErrorText)
+            : 'Success!';
+
+        final snackBar = SnackBar(
+          content: Row(
+            children: [
+              if (stateConfig.showIcon && stateConfig.icon != null) ...[
+                Icon(
+                  stateConfig.icon,
+                  color: stateConfig.iconColor ?? stateConfig.textColor,
+                  size: stateConfig.iconSize,
+                ),
+                const SizedBox(width: 12),
+              ],
+              Expanded(
+                child: Text(
+                  message,
+                  style: TextStyle(
+                    color: stateConfig.textColor,
+                    fontSize: stateConfig.fontSize,
+                    fontWeight: stateConfig.fontWeight,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: stateConfig.backgroundColor,
+          behavior: config.behavior,
+          duration: config.duration,
+          margin: config.position == SnackbarPosition.top
+              ? (config.margin ??
+                  const EdgeInsets.only(top: 16, left: 16, right: 16))
+              : config.margin,
+          padding: config.padding,
+          shape: stateConfig.borderRadius != null
+              ? RoundedRectangleBorder(borderRadius: stateConfig.borderRadius!)
+              : null,
+          elevation: stateConfig.elevation,
+          dismissDirection: config.dismissDirection,
+          showCloseIcon: config.showCloseIcon,
+          closeIconColor: config.closeIconColor,
+          action: stateConfig.action,
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      });
+    }
   }
 
   Widget _buildMainContent(BuildContext context) {
@@ -534,74 +612,144 @@ class SmartStateHandler<T> extends StatelessWidget {
         return null;
     }
 
-    return Container(
-      color: overlayBackgroundColor ?? Colors.black.withValues(alpha: 0.3),
+    // Apply overlay config styling
+    final overlayStateConfig = overlayConfig.getConfigForState(currentState);
+    if (overlayStateConfig.backgroundColor != null ||
+        overlayStateConfig.borderRadius != null ||
+        overlayStateConfig.padding != null ||
+        overlayStateConfig.margin != null ||
+        overlayStateConfig.elevation > 0) {
+      overlay = Container(
+        constraints: BoxConstraints(
+          maxWidth: overlayStateConfig.maxWidth,
+          minHeight: overlayStateConfig.minHeight ?? 0,
+        ),
+        margin: overlayStateConfig.margin,
+        padding: overlayStateConfig.padding,
+        decoration: BoxDecoration(
+          color: overlayStateConfig.backgroundColor,
+          borderRadius: overlayStateConfig.borderRadius,
+          boxShadow: overlayStateConfig.elevation > 0
+              ? [
+                  BoxShadow(
+                    color: overlayStateConfig.shadowColor ??
+                        Colors.black.withValues(alpha: 0.2),
+                    blurRadius: overlayStateConfig.elevation * 2,
+                    offset: Offset(0, overlayStateConfig.elevation),
+                  ),
+                ]
+              : null,
+        ),
+        child: overlay,
+      );
+    }
+
+    Widget barrierContent = Container(
+      color: overlayBackgroundColor ??
+          overlayConfig.barrierColor ??
+          Colors.black.withValues(alpha: 0.3),
       child: Align(alignment: overlayAlignment, child: overlay),
     );
+
+    // Make overlay dismissible if configured
+    if (overlayConfig.isDismissible || overlayConfig.barrierDismissible) {
+      return GestureDetector(
+        onTap: overlayConfig.barrierDismissible
+            ? () {
+                onOverlayDismiss?.call();
+              }
+            : null,
+        child: Stack(
+          children: [
+            barrierContent,
+            if (overlayConfig.isDismissible)
+              Positioned(
+                top: 0,
+                right: 0,
+                child: SafeArea(
+                  child: IconButton(
+                    icon: const Icon(Icons.close),
+                    color: Colors.white,
+                    onPressed: () {
+                      onOverlayDismiss?.call();
+                    },
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+    }
+
+    return barrierContent;
   }
 
   Widget _buildDefaultOverlayLoading(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const CircularProgressIndicator(),
-          const SizedBox(height: 16),
-          Text(customLoadingMessage ?? textConfig.loadingText),
-        ],
-      ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        CircularProgressIndicator(
+          color: overlayConfig.loadingConfig.iconColor,
+        ),
+        const SizedBox(height: 16),
+        Text(
+          customLoadingMessage ?? textConfig.loadingText,
+          style: TextStyle(
+            color: overlayConfig.loadingConfig.textColor,
+            fontSize: 16,
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildDefaultOverlayError(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      margin: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(errorIcon, color: Colors.red, size: 48),
-          const SizedBox(height: 16),
-          Text(
-            errorObject?.toString() ?? textConfig.defaultErrorText,
-            textAlign: TextAlign.center,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          errorIcon,
+          color: overlayConfig.errorConfig.iconColor ?? Colors.red,
+          size: overlayConfig.errorConfig.iconSize,
+        ),
+        const SizedBox(height: 16),
+        Text(
+          errorObject?.toString() ?? textConfig.defaultErrorText,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: overlayConfig.errorConfig.textColor,
+            fontSize: 16,
           ),
-          if (onRetryPressed != null) ...[
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: onRetryPressed,
-              child: Text(textConfig.retryButtonText),
-            ),
-          ],
+        ),
+        if (onRetryPressed != null) ...[
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: onRetryPressed,
+            child: Text(textConfig.retryButtonText),
+          ),
         ],
-      ),
+      ],
     );
   }
 
   Widget _buildDefaultOverlaySuccess(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.check_circle, color: Colors.green, size: 48),
-          const SizedBox(height: 16),
-          const Text('Success!'),
-        ],
-      ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          Icons.check_circle,
+          color: overlayConfig.successConfig.iconColor ?? Colors.green,
+          size: overlayConfig.successConfig.iconSize,
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'Success!',
+          style: TextStyle(
+            color: overlayConfig.successConfig.textColor,
+            fontSize: 16,
+          ),
+        ),
+      ],
     );
   }
 
