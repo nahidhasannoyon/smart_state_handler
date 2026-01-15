@@ -283,14 +283,8 @@ class SmartStateHandler<T> extends StatelessWidget {
     return Builder(
       builder: (context) {
         // Show snackbar if enabled and in error or success state
-        if (showErrorAsSnackbar) {
-          if (currentState.isError) {
-            _scheduleSnackbar(context, SnackbarType.error);
-          } else if (currentState.isSuccess) {
-            // Only show success snackbar if configured
-            // You can add a flag to control this behavior
-            // For now, we'll show it only on explicit success state
-          }
+        if (showErrorAsSnackbar && currentState.isError) {
+          _scheduleSnackbar(context, SnackbarType.error);
         }
 
         return _buildMainContent(context);
@@ -299,15 +293,36 @@ class SmartStateHandler<T> extends StatelessWidget {
   }
 
   // Track the last state we showed a snackbar for to avoid showing multiple times
-  static final Map<int, SmartState> _lastSnackbarStates = {};
+  // Using a weak reference approach with timestamp to prevent memory leaks
+  static final Map<int, ({SmartState state, DateTime timestamp})>
+      _lastSnackbarStates = {};
+  static const _snackbarCooldownMs =
+      500; // Prevent duplicate snackbars within 500ms
 
   void _scheduleSnackbar(BuildContext context, SnackbarType type) {
     final widgetHash = hashCode;
-    final lastState = _lastSnackbarStates[widgetHash];
+    final now = DateTime.now();
+    final lastEntry = _lastSnackbarStates[widgetHash];
 
-    // Only schedule if we haven't shown a snackbar for this state yet
-    if (lastState != currentState) {
-      _lastSnackbarStates[widgetHash] = currentState;
+    // Only schedule if we haven't shown a snackbar for this state recently
+    final shouldShow = lastEntry == null ||
+        lastEntry.state != currentState ||
+        now.difference(lastEntry.timestamp).inMilliseconds >
+            _snackbarCooldownMs;
+
+    if (shouldShow) {
+      _lastSnackbarStates[widgetHash] = (state: currentState, timestamp: now);
+
+      // Clean up old entries to prevent memory leak (keep last 100 entries)
+      if (_lastSnackbarStates.length > 100) {
+        final sortedKeys = _lastSnackbarStates.keys.toList()
+          ..sort((a, b) => _lastSnackbarStates[a]!
+              .timestamp
+              .compareTo(_lastSnackbarStates[b]!.timestamp));
+        for (var i = 0; i < 50; i++) {
+          _lastSnackbarStates.remove(sortedKeys[i]);
+        }
+      }
 
       SchedulerBinding.instance.addPostFrameCallback((_) {
         if (!context.mounted) return;
@@ -913,6 +928,9 @@ class SmartStateHandler<T> extends StatelessWidget {
     return content;
   }
 
+  // Track last load more trigger to implement debounce
+  static final Map<int, DateTime> _lastLoadMoreTriggers = {};
+
   Widget _wrapWithPagination(Widget content) {
     return NotificationListener<ScrollNotification>(
       onNotification: (ScrollNotification scrollInfo) {
@@ -920,12 +938,39 @@ class SmartStateHandler<T> extends StatelessWidget {
           final pixels = scrollInfo.metrics.pixels;
           final maxScroll = scrollInfo.metrics.maxScrollExtent;
 
-          if (maxScroll - pixels <= autoScrollThreshold && hasMoreDataToLoad) {
-            // Schedule the callback after the current frame to avoid setState during build
-            _debugLog('Triggering load more data');
-            SchedulerBinding.instance.addPostFrameCallback((_) {
-              onLoadMoreData?.call();
-            });
+          // Check if we should trigger load more
+          if (maxScroll - pixels <= autoScrollThreshold &&
+              hasMoreDataToLoad &&
+              !currentState.isLoadingMore) {
+            // Prevent multiple simultaneous loads
+
+            final now = DateTime.now();
+            final widgetHash = hashCode;
+            final lastTrigger = _lastLoadMoreTriggers[widgetHash];
+
+            // Implement debounce
+            if (lastTrigger == null ||
+                now.difference(lastTrigger).inMilliseconds >=
+                    loadMoreDebounceMs) {
+              _lastLoadMoreTriggers[widgetHash] = now;
+
+              // Clean up old entries to prevent memory leak
+              if (_lastLoadMoreTriggers.length > 50) {
+                final sortedKeys = _lastLoadMoreTriggers.keys.toList()
+                  ..sort((a, b) => _lastLoadMoreTriggers[a]!
+                      .compareTo(_lastLoadMoreTriggers[b]!));
+                for (var i = 0; i < 25; i++) {
+                  _lastLoadMoreTriggers.remove(sortedKeys[i]);
+                }
+              }
+
+              _debugLog('Triggering load more data');
+              SchedulerBinding.instance.addPostFrameCallback((_) {
+                onLoadMoreData?.call();
+              });
+            } else {
+              _debugLog('Load more debounced');
+            }
           }
         }
         return false;

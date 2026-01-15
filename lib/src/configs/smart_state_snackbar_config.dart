@@ -18,6 +18,7 @@ import 'package:flutter/material.dart';
 ///   ),
 /// )
 /// ```
+@immutable
 class SmartStateSnackbarConfig {
   const SmartStateSnackbarConfig({
     this.position = SnackbarPosition.bottom,
@@ -104,6 +105,7 @@ class SmartStateSnackbarConfig {
 }
 
 /// Configuration for individual snackbar state appearance
+@immutable
 class SnackbarStateConfig {
   const SnackbarStateConfig({
     this.backgroundColor,

@@ -18,6 +18,7 @@ import 'package:smart_state_handler/smart_state_handler.dart';
 ///   ),
 /// )
 /// ```
+@immutable
 class SmartStateOverlayConfig {
   const SmartStateOverlayConfig({
     this.enabledStates = const [
@@ -107,6 +108,7 @@ class SmartStateOverlayConfig {
 }
 
 /// Configuration for individual overlay state appearance
+@immutable
 class OverlayStateConfig {
   const OverlayStateConfig({
     this.backgroundColor,

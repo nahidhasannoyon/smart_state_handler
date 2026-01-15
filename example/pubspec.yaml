@@ -2,7 +2,7 @@ name: smart_state_handler_example
 description: Example app for smart_state_handler package
 publish_to: "none"
 
-version: 1.0.0+1
+version: 1.0.2
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
@@ -17,7 +17,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
 
 flutter:
   uses-material-design: true
