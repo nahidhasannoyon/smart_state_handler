@@ -30,6 +30,7 @@ class SmartStateSnackbarConfig {
     this.padding,
     this.width,
     this.dismissDirection = DismissDirection.down,
+    this.showSuccessSnackbar = true,
     this.errorConfig = const SnackbarStateConfig(
       backgroundColor: Color(0xFFD32F2F),
       textColor: Colors.white,
@@ -75,6 +76,9 @@ class SmartStateSnackbarConfig {
 
   /// Direction to swipe to dismiss
   final DismissDirection dismissDirection;
+
+  /// Whether to show success snackbar
+  final bool showSuccessSnackbar;
 
   /// Configuration for error state snackbar
   final SnackbarStateConfig errorConfig;

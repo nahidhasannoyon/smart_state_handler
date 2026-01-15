@@ -1472,25 +1472,25 @@ class ProductProvider extends ChangeNotifier with SmartStateMemoization {
 */
 
 /// v1.0.2 Performance Tips:
-/// 
+///
 /// 1. Use SmartStateCache for data caching:
 ///    - Reduces API calls
 ///    - Improves perceived performance
 ///    - Automatic LRU cleanup
-/// 
+///
 /// 2. Use SmartStateMemoization to prevent rebuilds:
 ///    - Memoize expensive widget builders
 ///    - Only rebuild when dependencies change
 ///    - Clear cache when needed with clearMemoCache()
-/// 
+///
 /// 3. Use SmartStateKeepAlive in lists:
 ///    - Preserves widget state when scrolling
 ///    - Better for forms and interactive items
 ///    - Reduces unnecessary rebuilds
-/// 
+///
 /// 4. Use const constructors for configs:
 ///    static const _textConfig = SmartStateTextConfig(...);
 ///    Enables Flutter optimizations
-/// 
+///
 /// 5. Enable debouncing for pagination:
 ///    loadMoreDebounceMs: 300 (prevents rapid-fire requests)

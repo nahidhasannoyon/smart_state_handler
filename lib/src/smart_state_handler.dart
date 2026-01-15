@@ -285,6 +285,9 @@ class SmartStateHandler<T> extends StatelessWidget {
         // Show snackbar if enabled and in error or success state
         if (showErrorAsSnackbar && currentState.isError) {
           _scheduleSnackbar(context, SnackbarType.error);
+        } else if (snackbarConfig.showSuccessSnackbar &&
+            currentState.isSuccess) {
+          _scheduleSnackbar(context, SnackbarType.success);
         }
 
         return _buildMainContent(context);
@@ -334,27 +337,30 @@ class SmartStateHandler<T> extends StatelessWidget {
             : 'Success!';
 
         final snackBar = SnackBar(
-          content: Row(
-            children: [
-              if (stateConfig.showIcon && stateConfig.icon != null) ...[
-                Icon(
-                  stateConfig.icon,
-                  color: stateConfig.iconColor ?? stateConfig.textColor,
-                  size: stateConfig.iconSize,
-                ),
-                const SizedBox(width: 12),
-              ],
-              Expanded(
-                child: Text(
-                  message,
-                  style: TextStyle(
-                    color: stateConfig.textColor,
-                    fontSize: stateConfig.fontSize,
-                    fontWeight: stateConfig.fontWeight,
+          content: GestureDetector(
+            onTap: config.onTap,
+            child: Row(
+              children: [
+                if (stateConfig.showIcon && stateConfig.icon != null) ...[
+                  Icon(
+                    stateConfig.icon,
+                    color: stateConfig.iconColor ?? stateConfig.textColor,
+                    size: stateConfig.iconSize,
+                  ),
+                  const SizedBox(width: 12),
+                ],
+                Expanded(
+                  child: Text(
+                    message,
+                    style: TextStyle(
+                      color: stateConfig.textColor,
+                      fontSize: stateConfig.fontSize,
+                      fontWeight: stateConfig.fontWeight,
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           backgroundColor: stateConfig.backgroundColor,
           behavior: config.behavior,
@@ -372,6 +378,7 @@ class SmartStateHandler<T> extends StatelessWidget {
           showCloseIcon: config.showCloseIcon,
           closeIconColor: config.closeIconColor,
           action: stateConfig.action,
+          onVisible: config.onVisible,
         );
 
         ScaffoldMessenger.of(context).showSnackBar(snackBar);

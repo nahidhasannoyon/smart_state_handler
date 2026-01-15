@@ -11,7 +11,15 @@ class SmartStateCache<K, V> {
 
   /// Get a value from cache
   V? get(K key) {
-    return _cache[key]?.value;
+    final entry = _cache[key];
+    if (entry == null) {
+      return null;
+    }
+
+    final updatedEntry = (value: entry.value, timestamp: DateTime.now());
+    _cache[key] = updatedEntry;
+
+    return updatedEntry.value;
   }
 
   /// Put a value into cache

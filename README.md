@@ -7,7 +7,7 @@ A comprehensive, production-ready Flutter widget for handling all UI states (loa
 
 Inspired by [smart_response_builder](https://pub.dev/packages/smart_response_builder), but with enhanced features and better developer experience.
 
-## � Table of Contents
+## 𝌞 Table of Contents
 
 - [Quick Start](#-quick-start)
 - [Features](#-what-smartstatehandler-offers)
