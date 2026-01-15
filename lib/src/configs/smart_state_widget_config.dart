@@ -12,6 +12,8 @@ class SmartStateWidgetConfig {
     this.loadMoreRetryWidget,
     this.noBuilderProvidedWidget,
     this.initialStateWidget,
+    this.skeletonShimmerWidget,
+    this.skeletonItemCount = 5,
   });
 
   final Widget? retryButtonWidget;
@@ -22,4 +24,10 @@ class SmartStateWidgetConfig {
   final Widget? loadMoreRetryWidget;
   final Widget? noBuilderProvidedWidget;
   final Widget? initialStateWidget;
+
+  /// Custom shimmer widget for skeleton loading
+  final Widget? skeletonShimmerWidget;
+
+  /// Number of skeleton items to show
+  final int skeletonItemCount;
 }
