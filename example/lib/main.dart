@@ -3,14 +3,17 @@ import 'package:smart_state_handler/smart_state_handler.dart';
 
 /// Complete runnable example for SmartStateHandler package
 ///
-/// This example demonstrates ALL NEW FEATURES:
+/// This example demonstrates ALL FEATURES including v1.0.2 updates:
 /// ✨ Dismissible overlays with custom styling
 /// 🎯 Top/bottom positioned snackbars with actions
 /// 🎨 Per-state overlay customization
 /// 📱 Selective overlay states (show overlay only for specific states)
 /// 🔄 Pull-to-refresh with smart configurations
-/// 📄 Pagination with loading more data
+/// 📄 Pagination with debouncing (300ms)
 /// 🎭 Multiple animation transitions
+/// 💾 SmartStateCache for data caching
+/// ⚡ SmartStateMemoization for performance
+/// 🔄 SmartStateKeepAlive for list optimization
 /// 💡 Smart defaults with easy customization
 void main() {
   runApp(const MyApp());
@@ -35,6 +38,10 @@ class MyApp extends StatelessWidget {
 
 /// Example demonstrating enhanced SmartStateHandler features
 /// Shows animations, memoization, custom icons, and improved configurations
+/// NOW WITH v1.0.2 Performance Features:
+/// - SmartStateCache for efficient data caching
+/// - SmartStateMemoization for preventing rebuilds
+/// - SmartStateKeepAlive for list state preservation
 
 class SmartStateHandlerExample extends StatefulWidget {
   const SmartStateHandlerExample({super.key});
@@ -44,7 +51,8 @@ class SmartStateHandlerExample extends StatefulWidget {
       _SmartStateHandlerExampleState();
 }
 
-class _SmartStateHandlerExampleState extends State<SmartStateHandlerExample> {
+class _SmartStateHandlerExampleState extends State<SmartStateHandlerExample>
+    with SmartStateMemoization {
   SmartState _currentState = SmartState.initial;
   List<String> _data = [];
   String? _error;
@@ -63,10 +71,22 @@ class _SmartStateHandlerExampleState extends State<SmartStateHandlerExample> {
   final _emailController = TextEditingController();
   final _scrollController = ScrollController();
 
+  // 💾 NEW v1.0.2: Cache utility for efficient data management
+  final _dataCache = SmartStateCache<String, List<String>>(maxSize: 50);
+
   @override
   void initState() {
     super.initState();
     // Start with initial state - user can trigger loading manually
+
+    // Check if we have cached data
+    final cachedData = _dataCache.get('main_data');
+    if (cachedData != null) {
+      setState(() {
+        _data = cachedData;
+        _currentState = SmartState.success;
+      });
+    }
   }
 
   @override
@@ -145,6 +165,9 @@ class _SmartStateHandlerExampleState extends State<SmartStateHandlerExample> {
       _data = List.generate(10, (index) => 'Item ${index + 1}');
       _currentState = SmartState.success;
       _error = null;
+
+      // 💾 NEW v1.0.2: Cache the data
+      _dataCache.put('main_data', _data);
     });
   }
 
@@ -187,6 +210,9 @@ class _SmartStateHandlerExampleState extends State<SmartStateHandlerExample> {
       );
       _data.addAll(newItems);
       _currentState = SmartState.success;
+
+      // 💾 NEW v1.0.2: Update cache with new data
+      _dataCache.put('main_data', _data);
 
       // Simulate end of data after 20 items
       if (_data.length >= 20) {
@@ -894,76 +920,88 @@ class _SmartStateHandlerExampleState extends State<SmartStateHandlerExample> {
 
               // Main data builder for non-overlay mode
               successDataBuilder: (context, data) {
-                return NotificationListener<ScrollNotification>(
-                  onNotification: (scrollInfo) {
-                    // Auto-load more when near bottom
-                    if (scrollInfo.metrics.pixels >=
-                        scrollInfo.metrics.maxScrollExtent - 200) {
-                      if (_hasMoreData &&
-                          _currentState != SmartState.loadingMore) {
-                        _loadMoreData();
+                // ⚡ NEW v1.0.2: Memoize list building for performance
+                return memoize(
+                  'data-list',
+                  () => NotificationListener<ScrollNotification>(
+                    onNotification: (scrollInfo) {
+                      // Auto-load more when near bottom
+                      if (scrollInfo.metrics.pixels >=
+                          scrollInfo.metrics.maxScrollExtent - 200) {
+                        if (_hasMoreData &&
+                            _currentState != SmartState.loadingMore) {
+                          _loadMoreData();
+                        }
                       }
-                    }
-                    return false;
-                  },
-                  child: ListView.builder(
-                    key: const PageStorageKey('data_list'),
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(8),
-                    itemCount: data.length +
-                        (_currentState.isLoadingMore ? 1 : 0) +
-                        (!_hasMoreData && data.isNotEmpty ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      // Show loading indicator
-                      if (_currentState.isLoadingMore && index == data.length) {
-                        return const Padding(
-                          padding: EdgeInsets.all(16.0),
-                          child: Center(child: CircularProgressIndicator()),
-                        );
-                      }
+                      return false;
+                    },
+                    child: ListView.builder(
+                      key: const PageStorageKey('data_list'),
+                      controller: _scrollController,
+                      padding: const EdgeInsets.all(8),
+                      itemCount: data.length +
+                          (_currentState.isLoadingMore ? 1 : 0) +
+                          (!_hasMoreData && data.isNotEmpty ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        // Show loading indicator
+                        if (_currentState.isLoadingMore &&
+                            index == data.length) {
+                          return const Padding(
+                            padding: EdgeInsets.all(16.0),
+                            child: Center(child: CircularProgressIndicator()),
+                          );
+                        }
 
-                      // Show no more data message
-                      if (!_hasMoreData &&
-                          data.isNotEmpty &&
-                          index ==
-                              data.length +
-                                  (_currentState.isLoadingMore ? 1 : 0)) {
-                        return const Padding(
-                          padding: EdgeInsets.all(16.0),
-                          child: Center(
-                            child: Text(
-                              'No more data to load',
-                              style: TextStyle(color: Colors.grey),
+                        // Show no more data message
+                        if (!_hasMoreData &&
+                            data.isNotEmpty &&
+                            index ==
+                                data.length +
+                                    (_currentState.isLoadingMore ? 1 : 0)) {
+                          return const Padding(
+                            padding: EdgeInsets.all(16.0),
+                            child: Center(
+                              child: Text(
+                                'No more data to load',
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            ),
+                          );
+                        }
+
+                        // Show regular item - ensure index is within data bounds
+                        if (index >= data.length) {
+                          return const SizedBox.shrink();
+                        }
+
+                        // 🔄 NEW v1.0.2: Use SmartStateKeepAlive for list optimization
+                        return SmartStateKeepAlive(
+                          keepAlive: true,
+                          child: Card(
+                            margin: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 2,
+                            ),
+                            child: ListTile(
+                              leading:
+                                  CircleAvatar(child: Text('${index + 1}')),
+                              title: Text(data[index]),
+                              subtitle: Text('Subtitle for ${data[index]}'),
+                              trailing: const Icon(Icons.arrow_forward_ios),
+                              onTap: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Tapped ${data[index]}'),
+                                  ),
+                                );
+                              },
                             ),
                           ),
                         );
-                      }
-
-                      // Show regular item - ensure index is within data bounds
-                      if (index >= data.length) {
-                        return const SizedBox
-                            .shrink(); // Return empty widget for invalid indices
-                      }
-
-                      return Card(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 4,
-                          vertical: 2,
-                        ),
-                        child: ListTile(
-                          leading: CircleAvatar(child: Text('${index + 1}')),
-                          title: Text(data[index]),
-                          subtitle: Text('Subtitle for ${data[index]}'),
-                          trailing: const Icon(Icons.arrow_forward_ios),
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Tapped ${data[index]}')),
-                            );
-                          },
-                        ),
-                      );
-                    },
+                      },
+                    ),
                   ),
+                  [data.length, _currentState, _hasMoreData],
                 );
               },
 
@@ -1244,14 +1282,17 @@ class _SmartStateHandlerExampleState extends State<SmartStateHandlerExample> {
   }
 }
 
-/// Example with GetX Controller
+/// Example with GetX Controller + v1.0.2 Performance Features
 /// Uncomment if you're using GetX
 /*
-class ProductController extends GetxController {
+class ProductController extends GetxController with SmartStateMemoization {
   final _state = SmartState.loading.obs;
   final _products = <Product>[].obs;
   final _error = RxnString();
   final _hasMoreData = true.obs;
+  
+  // 💾 NEW v1.0.2: Use cache for efficient data management
+  final _cache = SmartStateCache<String, List<Product>>(maxSize: 100);
 
   SmartState get state => _state.value;
   List<Product> get products => _products;
@@ -1263,6 +1304,14 @@ class ProductController extends GetxController {
       if (refresh) {
         _state.value = SmartState.loading;
         _products.clear();
+      } else {
+        // 💾 Check cache first
+        final cached = _cache.get('products');
+        if (cached != null && cached.isNotEmpty) {
+          _products.value = cached;
+          _state.value = SmartState.success;
+          return;
+        }
       }
       
       // Your API call here
@@ -1271,8 +1320,11 @@ class ProductController extends GetxController {
       if (newProducts.isEmpty) {
         _state.value = SmartState.empty;
       } else {
-        _products.addAll(newProducts);
+        _products.value = newProducts;
         _state.value = SmartState.success;
+        
+        // 💾 Cache the result
+        _cache.put('products', newProducts);
       }
     } catch (e) {
       _error.value = e.toString();
@@ -1291,6 +1343,9 @@ class ProductController extends GetxController {
         _hasMoreData.value = false;
       } else {
         _products.addAll(newProducts);
+        
+        // 💾 Update cache
+        _cache.put('products', _products);
       }
       
       _state.value = SmartState.success;
@@ -1299,9 +1354,16 @@ class ProductController extends GetxController {
       // Handle pagination error separately if needed
     }
   }
+  
+  @override
+  void onClose() {
+    // 💾 Optionally clear cache on dispose
+    _cache.clear();
+    super.onClose();
+  }
 }
 
-// Usage in Widget
+// Usage in Widget with memoization
 class ProductsPage extends StatelessWidget {
   final ProductController controller = Get.put(ProductController());
   
@@ -1309,16 +1371,126 @@ class ProductsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Obx(() => SmartStateHandler<List<Product>>(
-        state: controller.state,
-        data: controller.products.isNotEmpty ? controller.products : null,
-        error: controller.error,
-        hasMoreData: controller.hasMoreData,
-        onRetry: () => controller.fetchProducts(refresh: true),
-        onRefresh: () => controller.fetchProducts(refresh: true),
-        onLoadMore: controller.loadMore,
-        builder: (context, products) => ProductGrid(products: products),
+        currentState: controller.state,
+        successData: controller.products.isNotEmpty ? controller.products : null,
+        errorObject: controller.error,
+        hasMoreDataToLoad: controller.hasMoreData,
+        
+        // ⚡ NEW v1.0.2: Performance configurations
+        loadMoreDebounceMs: 300,  // Debounce pagination
+        enableDebugLogs: true,    // See cache/debounce in action
+        
+        onRetryPressed: () => controller.fetchProducts(refresh: true),
+        onPullToRefresh: () => controller.fetchProducts(refresh: true),
+        onLoadMoreData: controller.loadMore,
+        
+        successDataBuilder: (context, products) {
+          // ⚡ Use memoization for expensive widgets
+          return controller.memoize(
+            'product-grid',
+            () => GridView.builder(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 0.7,
+              ),
+              itemCount: products.length,
+              itemBuilder: (context, index) {
+                // 🔄 NEW v1.0.2: KeepAlive for grid items
+                return SmartStateKeepAlive(
+                  child: ProductCard(products[index]),
+                );
+              },
+            ),
+            [products.length], // Rebuild only when count changes
+          );
+        },
       )),
     );
   }
 }
 */
+
+/// Example with Provider + v1.0.2 Performance Features
+/// Uncomment if you're using Provider
+/*
+class ProductProvider extends ChangeNotifier with SmartStateMemoization {
+  SmartState _state = SmartState.loading;
+  List<Product> _products = [];
+  String? _error;
+  bool _hasMoreData = true;
+  
+  // 💾 NEW v1.0.2: Add cache
+  final _cache = SmartStateCache<String, List<Product>>(maxSize: 100);
+
+  SmartState get state => _state;
+  List<Product> get products => _products;
+  String? get error => _error;
+  bool get hasMoreData => _hasMoreData;
+
+  Future<void> fetchProducts({bool refresh = false}) async {
+    try {
+      if (!refresh) {
+        // 💾 Check cache first
+        final cached = _cache.get('products');
+        if (cached != null && cached.isNotEmpty) {
+          _products = cached;
+          _state = SmartState.success;
+          notifyListeners();
+          return;
+        }
+      }
+      
+      _state = SmartState.loading;
+      notifyListeners();
+      
+      final newProducts = await ApiService.getProducts();
+      
+      if (newProducts.isEmpty) {
+        _state = SmartState.empty;
+      } else {
+        _products = newProducts;
+        _state = SmartState.success;
+        
+        // 💾 Cache the data
+        _cache.put('products', newProducts);
+      }
+    } catch (e) {
+      _error = e.toString();
+      _state = SmartState.error;
+    }
+    notifyListeners();
+  }
+  
+  @override
+  void dispose() {
+    // 💾 Clean up cache
+    _cache.clear();
+    clearMemoCache(); // Clear memoization cache
+    super.dispose();
+  }
+}
+*/
+
+/// v1.0.2 Performance Tips:
+/// 
+/// 1. Use SmartStateCache for data caching:
+///    - Reduces API calls
+///    - Improves perceived performance
+///    - Automatic LRU cleanup
+/// 
+/// 2. Use SmartStateMemoization to prevent rebuilds:
+///    - Memoize expensive widget builders
+///    - Only rebuild when dependencies change
+///    - Clear cache when needed with clearMemoCache()
+/// 
+/// 3. Use SmartStateKeepAlive in lists:
+///    - Preserves widget state when scrolling
+///    - Better for forms and interactive items
+///    - Reduces unnecessary rebuilds
+/// 
+/// 4. Use const constructors for configs:
+///    static const _textConfig = SmartStateTextConfig(...);
+///    Enables Flutter optimizations
+/// 
+/// 5. Enable debouncing for pagination:
+///    loadMoreDebounceMs: 300 (prevents rapid-fire requests)
