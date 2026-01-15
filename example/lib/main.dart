@@ -3,13 +3,18 @@ import 'package:smart_state_handler/smart_state_handler.dart';
 
 /// Complete runnable example for SmartStateHandler package
 ///
-/// This example demonstrates:
-/// - Basic list state handling with loading/error/success/empty
-/// - Pull-to-refresh functionality
-/// - Pagination with loading more data
-/// - Overlay mode for form submissions
-/// - Smooth animations between states
-/// - Custom error and empty state builders
+/// This example demonstrates ALL FEATURES including v1.0.2 updates:
+/// ✨ Dismissible overlays with custom styling
+/// 🎯 Top/bottom positioned snackbars with actions
+/// 🎨 Per-state overlay customization
+/// 📱 Selective overlay states (show overlay only for specific states)
+/// 🔄 Pull-to-refresh with smart configurations
+/// 📄 Pagination with debouncing (300ms)
+/// 🎭 Multiple animation transitions
+/// 💾 SmartStateCache for data caching
+/// ⚡ SmartStateMemoization for performance
+/// 🔄 SmartStateKeepAlive for list optimization
+/// 💡 Smart defaults with easy customization
 void main() {
   runApp(const MyApp());
 }
@@ -33,6 +38,10 @@ class MyApp extends StatelessWidget {
 
 /// Example demonstrating enhanced SmartStateHandler features
 /// Shows animations, memoization, custom icons, and improved configurations
+/// NOW WITH v1.0.2 Performance Features:
+/// - SmartStateCache for efficient data caching
+/// - SmartStateMemoization for preventing rebuilds
+/// - SmartStateKeepAlive for list state preservation
 
 class SmartStateHandlerExample extends StatefulWidget {
   const SmartStateHandlerExample({super.key});
@@ -42,12 +51,16 @@ class SmartStateHandlerExample extends StatefulWidget {
       _SmartStateHandlerExampleState();
 }
 
-class _SmartStateHandlerExampleState extends State<SmartStateHandlerExample> {
+class _SmartStateHandlerExampleState extends State<SmartStateHandlerExample>
+    with SmartStateMemoization {
   SmartState _currentState = SmartState.initial;
   List<String> _data = [];
   String? _error;
   bool _hasMoreData = true;
   bool _enableOverlayMode = false;
+  bool _enableSnackbar = false;
+  bool _snackbarAtTop = true;
+  bool _dismissibleOverlay = true;
   SmartStateTransitionType _transitionType = SmartStateTransitionType.fade;
   SmartStateTransitionType _overlayTransitionType =
       SmartStateTransitionType.scale;
@@ -58,10 +71,22 @@ class _SmartStateHandlerExampleState extends State<SmartStateHandlerExample> {
   final _emailController = TextEditingController();
   final _scrollController = ScrollController();
 
+  // 💾 NEW v1.0.2: Cache utility for efficient data management
+  final _dataCache = SmartStateCache<String, List<String>>(maxSize: 50);
+
   @override
   void initState() {
     super.initState();
     // Start with initial state - user can trigger loading manually
+
+    // Check if we have cached data
+    final cachedData = _dataCache.get('main_data');
+    if (cachedData != null) {
+      setState(() {
+        _data = cachedData;
+        _currentState = SmartState.success;
+      });
+    }
   }
 
   @override
@@ -140,6 +165,9 @@ class _SmartStateHandlerExampleState extends State<SmartStateHandlerExample> {
       _data = List.generate(10, (index) => 'Item ${index + 1}');
       _currentState = SmartState.success;
       _error = null;
+
+      // 💾 NEW v1.0.2: Cache the data
+      _dataCache.put('main_data', _data);
     });
   }
 
@@ -183,6 +211,9 @@ class _SmartStateHandlerExampleState extends State<SmartStateHandlerExample> {
       _data.addAll(newItems);
       _currentState = SmartState.success;
 
+      // 💾 NEW v1.0.2: Update cache with new data
+      _dataCache.put('main_data', _data);
+
       // Simulate end of data after 20 items
       if (_data.length >= 20) {
         _hasMoreData = false;
@@ -190,10 +221,402 @@ class _SmartStateHandlerExampleState extends State<SmartStateHandlerExample> {
     });
   }
 
+  /// Show control panel in a modal bottom sheet
+  void _showControlPanel(BuildContext context, VoidCallback onStateChanged) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.8,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (context, scrollController) => StatefulBuilder(
+          builder: (context, setState) => Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Column(
+              children: [
+                // Handle
+                Container(
+                  margin: const EdgeInsets.only(top: 8),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                // Header
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: const BoxDecoration(
+                    border: Border(
+                        bottom: BorderSide(color: Colors.grey, width: 0.5)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.settings, color: Colors.deepPurple),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Demo Controls',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ],
+                  ),
+                ),
+                // Content
+                Expanded(
+                  child: SingleChildScrollView(
+                    controller: scrollController,
+                    padding: const EdgeInsets.all(16),
+                    child: // Mode toggle section
+                        Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey[300]!),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                _enableOverlayMode
+                                    ? Icons.layers
+                                    : Icons.view_stream,
+                                color: Theme.of(context).primaryColor,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _enableOverlayMode
+                                          ? 'Overlay Mode (Form Demo)'
+                                          : 'Normal Mode (List Demo)',
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    Text(
+                                      _enableOverlayMode
+                                          ? 'States appear as overlays above the form'
+                                          : 'States replace the entire content area',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Switch(
+                                value: _enableOverlayMode,
+                                onChanged: (value) {
+                                  _enableOverlayMode = value;
+                                  if (value) {
+                                    _currentState = SmartState.initial;
+                                    _data.clear();
+                                    _error = null;
+                                    _nameController.clear();
+                                    _emailController.clear();
+                                  }
+                                  onStateChanged();
+                                  setState(() {});
+                                },
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+
+                          // 🎯 NEW FEATURE: Error Display Toggle
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withValues(alpha: 0.05),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: Colors.blue.withValues(alpha: 0.2),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  _enableSnackbar
+                                      ? Icons.info_outline
+                                      : Icons.error_outline,
+                                  color: _enableSnackbar
+                                      ? Colors.blue
+                                      : Colors.red,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Error Display Style',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                      Text(
+                                        _enableSnackbar
+                                            ? 'Showing as Snackbar'
+                                            : 'Showing as Full Screen',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Switch(
+                                  value: _enableSnackbar,
+                                  onChanged: (value) {
+                                    _enableSnackbar = value;
+                                    onStateChanged();
+                                    setState(() {});
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          if (_enableSnackbar) ...[
+                            const SizedBox(height: 12),
+                            // 📍 NEW FEATURE: Snackbar Position Toggle
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.green.withValues(alpha: 0.05),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: Colors.green.withValues(alpha: 0.2),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    _snackbarAtTop
+                                        ? Icons.vertical_align_top
+                                        : Icons.vertical_align_bottom,
+                                    color: Colors.green,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Snackbar Position',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                        Text(
+                                          _snackbarAtTop
+                                              ? 'Showing at Top'
+                                              : 'Showing at Bottom',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Switch(
+                                    value: _snackbarAtTop,
+                                    onChanged: (value) {
+                                      _snackbarAtTop = value;
+                                      onStateChanged();
+                                      setState(() {});
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+
+                          if (_enableOverlayMode) ...[
+                            const SizedBox(height: 12),
+                            // 🚪 NEW FEATURE: Dismissible Overlay Toggle
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withValues(alpha: 0.05),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: Colors.orange.withValues(alpha: 0.2),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    _dismissibleOverlay
+                                        ? Icons.touch_app
+                                        : Icons.block,
+                                    color: Colors.orange,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Dismissible Overlay',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                        Text(
+                                          _dismissibleOverlay
+                                              ? 'Tap to dismiss'
+                                              : 'Cannot dismiss',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Switch(
+                                    value: _dismissibleOverlay,
+                                    onChanged: (value) {
+                                      _dismissibleOverlay = value;
+                                      onStateChanged();
+                                      setState(() {});
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+
+                          const SizedBox(height: 12),
+                          // Animation controls
+                          if (!_enableOverlayMode) ...[
+                            Row(
+                              children: [
+                                const Icon(Icons.animation,
+                                    color: Colors.purple),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child:
+                                      DropdownButton<SmartStateTransitionType>(
+                                    value: _transitionType,
+                                    isExpanded: true,
+                                    onChanged:
+                                        (SmartStateTransitionType? newValue) {
+                                      if (newValue != null) {
+                                        _transitionType = newValue;
+                                        onStateChanged();
+                                        setState(() {});
+                                      }
+                                    },
+                                    items: SmartStateTransitionType.values.map<
+                                        DropdownMenuItem<
+                                            SmartStateTransitionType>>((
+                                      SmartStateTransitionType value,
+                                    ) {
+                                      return DropdownMenuItem<
+                                          SmartStateTransitionType>(
+                                        value: value,
+                                        child: Text(
+                                          '${value.name.toUpperCase()} Animation',
+                                          style: const TextStyle(fontSize: 14),
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                          // Overlay Animation controls
+                          if (_enableOverlayMode) ...[
+                            Row(
+                              children: [
+                                const Icon(Icons.layers, color: Colors.purple),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child:
+                                      DropdownButton<SmartStateTransitionType>(
+                                    value: _overlayTransitionType,
+                                    isExpanded: true,
+                                    onChanged:
+                                        (SmartStateTransitionType? newValue) {
+                                      if (newValue != null) {
+                                        _overlayTransitionType = newValue;
+                                        onStateChanged();
+                                        setState(() {});
+                                      }
+                                    },
+                                    items: SmartStateTransitionType.values.map<
+                                        DropdownMenuItem<
+                                            SmartStateTransitionType>>((
+                                      SmartStateTransitionType value,
+                                    ) {
+                                      return DropdownMenuItem<
+                                          SmartStateTransitionType>(
+                                        value: value,
+                                        child: Text(
+                                          'OVERLAY ${value.name.toUpperCase()}',
+                                          style: const TextStyle(fontSize: 12),
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.settings),
+          onPressed: () => _showControlPanel(context, () => setState(() {})),
+        ),
         title: const Text('SmartStateHandler Demo'),
         actions: [
           IconButton(
@@ -216,19 +639,107 @@ class _SmartStateHandlerExampleState extends State<SmartStateHandlerExample> {
               hasMoreDataToLoad: _hasMoreData,
               enableDebugLogs: true,
               enableOverlayStates: _enableOverlayMode,
+              showErrorAsSnackbar: _enableSnackbar,
               enableAnimations: true,
               overlayBackgroundColor: Colors.black.withValues(alpha: 0.3),
               overlayAlignment: Alignment.center,
               autoScrollThreshold: 100.0,
               loadMoreDebounceMs: 300,
 
+              // 🎨 NEW: Overlay Configuration with dismissible options
+              overlayConfig: SmartStateOverlayConfig(
+                isDismissible: _dismissibleOverlay,
+                barrierDismissible: _dismissibleOverlay,
+                barrierColor: _enableOverlayMode
+                    ? Colors.black.withValues(alpha: 0.6)
+                    : Colors.black.withValues(alpha: 0.3),
+
+                // Customize loading overlay
+                loadingConfig: OverlayStateConfig(
+                  backgroundColor: Colors.white.withValues(alpha: 0.95),
+                  borderRadius: BorderRadius.circular(20),
+                  padding: const EdgeInsets.all(32),
+                  elevation: 12.0,
+                  iconColor: Colors.blue,
+                  textColor: Colors.black87,
+                  iconSize: 48.0,
+                  maxWidth: 300.0,
+                ),
+
+                // Customize error overlay
+                errorConfig: OverlayStateConfig(
+                  backgroundColor: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  padding: const EdgeInsets.all(32),
+                  elevation: 16.0,
+                  iconColor: Colors.red.shade700,
+                  textColor: Colors.black87,
+                  iconSize: 64.0,
+                  maxWidth: 320.0,
+                ),
+
+                // Customize success overlay
+                successConfig: OverlayStateConfig(
+                  backgroundColor: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  padding: const EdgeInsets.all(32),
+                  elevation: 12.0,
+                  iconColor: Colors.green.shade600,
+                  textColor: Colors.black87,
+                  iconSize: 64.0,
+                  maxWidth: 300.0,
+                ),
+              ),
+
+              // 🎯 NEW: Snackbar Configuration with top/bottom positioning
+              snackbarConfig: SmartStateSnackbarConfig(
+                position: _snackbarAtTop
+                    ? SnackbarPosition.top
+                    : SnackbarPosition.bottom,
+                behavior: SnackBarBehavior.floating,
+                duration: const Duration(seconds: 4),
+                showCloseIcon: true,
+                margin: const EdgeInsets.all(16),
+                errorConfig: SnackbarStateConfig(
+                  backgroundColor: Colors.red.shade700,
+                  textColor: Colors.white,
+                  icon: Icons.error_outline_rounded,
+                  iconSize: 24.0,
+                  fontSize: 15.0,
+                  fontWeight: FontWeight.w500,
+                  borderRadius: BorderRadius.circular(12),
+                  elevation: 8.0,
+                  action: SnackBarAction(
+                    label: 'RETRY',
+                    textColor: Colors.white,
+                    onPressed: () => _simulateDataLoading(isRefresh: true),
+                  ),
+                ),
+                successConfig: SnackbarStateConfig(
+                  backgroundColor: Colors.green.shade700,
+                  textColor: Colors.white,
+                  icon: Icons.check_circle_outline_rounded,
+                  iconSize: 24.0,
+                  fontSize: 15.0,
+                  borderRadius: BorderRadius.circular(12),
+                  elevation: 8.0,
+                ),
+              ),
+
+              // Callback when overlay is dismissed
+              onOverlayDismiss: () {
+                if (_dismissibleOverlay) {
+                  setState(() => _currentState = SmartState.initial);
+                }
+              },
+
               // Animation configuration
               animationConfig: SmartStateAnimationConfig(
                 duration: const Duration(milliseconds: 400),
                 curve: Curves.easeInOutCubic,
                 type: _transitionType,
-                overlayDuration: const Duration(milliseconds: 300),
-                overlayCurve: Curves.easeOut,
+                overlayDuration: const Duration(milliseconds: 350),
+                overlayCurve: Curves.easeOutBack,
                 overlayType: _overlayTransitionType,
               ),
 
@@ -409,76 +920,88 @@ class _SmartStateHandlerExampleState extends State<SmartStateHandlerExample> {
 
               // Main data builder for non-overlay mode
               successDataBuilder: (context, data) {
-                return NotificationListener<ScrollNotification>(
-                  onNotification: (scrollInfo) {
-                    // Auto-load more when near bottom
-                    if (scrollInfo.metrics.pixels >=
-                        scrollInfo.metrics.maxScrollExtent - 200) {
-                      if (_hasMoreData &&
-                          _currentState != SmartState.loadingMore) {
-                        _loadMoreData();
+                // ⚡ NEW v1.0.2: Memoize list building for performance
+                return memoize(
+                  'data-list',
+                  () => NotificationListener<ScrollNotification>(
+                    onNotification: (scrollInfo) {
+                      // Auto-load more when near bottom
+                      if (scrollInfo.metrics.pixels >=
+                          scrollInfo.metrics.maxScrollExtent - 200) {
+                        if (_hasMoreData &&
+                            _currentState != SmartState.loadingMore) {
+                          _loadMoreData();
+                        }
                       }
-                    }
-                    return false;
-                  },
-                  child: ListView.builder(
-                    key: const PageStorageKey('data_list'),
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(8),
-                    itemCount: data.length +
-                        (_currentState.isLoadingMore ? 1 : 0) +
-                        (!_hasMoreData && data.isNotEmpty ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      // Show loading indicator
-                      if (_currentState.isLoadingMore && index == data.length) {
-                        return const Padding(
-                          padding: EdgeInsets.all(16.0),
-                          child: Center(child: CircularProgressIndicator()),
-                        );
-                      }
+                      return false;
+                    },
+                    child: ListView.builder(
+                      key: const PageStorageKey('data_list'),
+                      controller: _scrollController,
+                      padding: const EdgeInsets.all(8),
+                      itemCount: data.length +
+                          (_currentState.isLoadingMore ? 1 : 0) +
+                          (!_hasMoreData && data.isNotEmpty ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        // Show loading indicator
+                        if (_currentState.isLoadingMore &&
+                            index == data.length) {
+                          return const Padding(
+                            padding: EdgeInsets.all(16.0),
+                            child: Center(child: CircularProgressIndicator()),
+                          );
+                        }
 
-                      // Show no more data message
-                      if (!_hasMoreData &&
-                          data.isNotEmpty &&
-                          index ==
-                              data.length +
-                                  (_currentState.isLoadingMore ? 1 : 0)) {
-                        return const Padding(
-                          padding: EdgeInsets.all(16.0),
-                          child: Center(
-                            child: Text(
-                              'No more data to load',
-                              style: TextStyle(color: Colors.grey),
+                        // Show no more data message
+                        if (!_hasMoreData &&
+                            data.isNotEmpty &&
+                            index ==
+                                data.length +
+                                    (_currentState.isLoadingMore ? 1 : 0)) {
+                          return const Padding(
+                            padding: EdgeInsets.all(16.0),
+                            child: Center(
+                              child: Text(
+                                'No more data to load',
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            ),
+                          );
+                        }
+
+                        // Show regular item - ensure index is within data bounds
+                        if (index >= data.length) {
+                          return const SizedBox.shrink();
+                        }
+
+                        // 🔄 NEW v1.0.2: Use SmartStateKeepAlive for list optimization
+                        return SmartStateKeepAlive(
+                          keepAlive: true,
+                          child: Card(
+                            margin: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 2,
+                            ),
+                            child: ListTile(
+                              leading:
+                                  CircleAvatar(child: Text('${index + 1}')),
+                              title: Text(data[index]),
+                              subtitle: Text('Subtitle for ${data[index]}'),
+                              trailing: const Icon(Icons.arrow_forward_ios),
+                              onTap: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Tapped ${data[index]}'),
+                                  ),
+                                );
+                              },
                             ),
                           ),
                         );
-                      }
-
-                      // Show regular item - ensure index is within data bounds
-                      if (index >= data.length) {
-                        return const SizedBox
-                            .shrink(); // Return empty widget for invalid indices
-                      }
-
-                      return Card(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 4,
-                          vertical: 2,
-                        ),
-                        child: ListTile(
-                          leading: CircleAvatar(child: Text('${index + 1}')),
-                          title: Text(data[index]),
-                          subtitle: Text('Subtitle for ${data[index]}'),
-                          trailing: const Icon(Icons.arrow_forward_ios),
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Tapped ${data[index]}')),
-                            );
-                          },
-                        ),
-                      );
-                    },
+                      },
+                    ),
                   ),
+                  [data.length, _currentState, _hasMoreData],
                 );
               },
 
@@ -631,46 +1154,6 @@ class _SmartStateHandlerExampleState extends State<SmartStateHandlerExample> {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
               ),
-
-              const SizedBox(height: 16),
-
-              // Info text
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.info_outline,
-                          color: Colors.blue[700],
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Overlay Mode Demo',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue[700],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'In overlay mode, this form stays visible while loading/error/success states appear as overlays above it. Try submitting the form to see the effect!',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
             ],
           ),
         ),
@@ -682,205 +1165,72 @@ class _SmartStateHandlerExampleState extends State<SmartStateHandlerExample> {
     return Container(
       padding: const EdgeInsets.all(16),
       color: Colors.grey[100],
-      child: Column(
-        children: [
-          // Mode toggle section
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey[300]!),
-            ),
-            child: Column(
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey[300]!),
+        ),
+        child: Column(
+          children: [
+            Row(
               children: [
-                Row(
-                  children: [
-                    Icon(
-                      _enableOverlayMode ? Icons.layers : Icons.view_stream,
-                      color: Theme.of(context).primaryColor,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _enableOverlayMode
-                                ? 'Overlay Mode (Form Demo)'
-                                : 'Normal Mode (List Demo)',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            _enableOverlayMode
-                                ? 'States appear as overlays above the form'
-                                : 'States replace the entire content area',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Switch(
-                      value: _enableOverlayMode,
-                      onChanged: (value) {
-                        setState(() {
-                          _enableOverlayMode = value;
-                          _currentState = SmartState.initial;
-                          _data.clear();
-                          _error = null;
-                          _nameController.clear();
-                          _emailController.clear();
-                        });
-                      },
-                    ),
-                  ],
+                Icon(
+                  Icons.science_outlined,
+                  color: Theme.of(context).primaryColor,
+                  size: 20,
                 ),
-                const SizedBox(height: 12),
-                // Animation controls
-                if (!_enableOverlayMode) ...[
-                  Row(
-                    children: [
-                      const Icon(Icons.animation, color: Colors.purple),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: DropdownButton<SmartStateTransitionType>(
-                          value: _transitionType,
-                          isExpanded: true,
-                          onChanged: (SmartStateTransitionType? newValue) {
-                            if (newValue != null) {
-                              setState(() {
-                                _transitionType = newValue;
-                              });
-                            }
-                          },
-                          items: SmartStateTransitionType.values
-                              .map<DropdownMenuItem<SmartStateTransitionType>>((
-                            SmartStateTransitionType value,
-                          ) {
-                            return DropdownMenuItem<SmartStateTransitionType>(
-                              value: value,
-                              child: Text(
-                                '${value.name.toUpperCase()} Animation',
-                                style: const TextStyle(fontSize: 14),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                // Overlay Animation controls
-                if (_enableOverlayMode) ...[
-                  Row(
-                    children: [
-                      const Icon(Icons.layers, color: Colors.orange),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: DropdownButton<SmartStateTransitionType>(
-                          value: _overlayTransitionType,
-                          isExpanded: true,
-                          onChanged: (SmartStateTransitionType? newValue) {
-                            if (newValue != null) {
-                              setState(() {
-                                _overlayTransitionType = newValue;
-                              });
-                            }
-                          },
-                          items: SmartStateTransitionType.values
-                              .map<DropdownMenuItem<SmartStateTransitionType>>((
-                            SmartStateTransitionType value,
-                          ) {
-                            return DropdownMenuItem<SmartStateTransitionType>(
-                              value: value,
-                              child: Text(
-                                'OVERLAY ${value.name.toUpperCase()}',
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // State testing buttons
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey[300]!),
-            ),
-            child: Column(
-              children: [
+                const SizedBox(width: 8),
                 Text(
                   _enableOverlayMode
                       ? 'Test Form States:'
                       : 'Test List States:',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
                 ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _buildStateButton(
-                      'Initial',
-                      SmartState.initial,
-                      Colors.grey,
-                    ),
-                    _buildStateButton(
-                      'Loading',
-                      SmartState.loading,
-                      Colors.blue,
-                    ),
-                    _buildStateButton(
-                      'Success',
-                      SmartState.success,
-                      Colors.green,
-                    ),
-                    _buildStateButton('Error', SmartState.error, Colors.red),
-                    if (!_enableOverlayMode) ...[
-                      _buildStateButton(
-                        'Empty',
-                        SmartState.empty,
-                        Colors.orange,
-                      ),
-                      _buildStateButton(
-                        'Offline',
-                        SmartState.offline,
-                        Colors.purple,
-                      ),
-                    ],
-                  ],
+              ],
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _buildStateButton(
+                  'Initial',
+                  SmartState.initial,
+                  Colors.grey,
                 ),
-                if (_enableOverlayMode) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    'Tip: Fill out the form and click "Submit Form" to see realistic overlay behavior!',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey[600],
-                      fontStyle: FontStyle.italic,
-                    ),
-                    textAlign: TextAlign.center,
+                _buildStateButton(
+                  'Loading',
+                  SmartState.loading,
+                  Colors.blue,
+                ),
+                _buildStateButton(
+                  'Success',
+                  SmartState.success,
+                  Colors.green,
+                ),
+                _buildStateButton('Error', SmartState.error, Colors.red),
+                if (!_enableOverlayMode) ...[
+                  _buildStateButton(
+                    'Empty',
+                    SmartState.empty,
+                    Colors.orange,
+                  ),
+                  _buildStateButton(
+                    'Offline',
+                    SmartState.offline,
+                    Colors.purple,
                   ),
                 ],
               ],
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -932,14 +1282,17 @@ class _SmartStateHandlerExampleState extends State<SmartStateHandlerExample> {
   }
 }
 
-/// Example with GetX Controller
+/// Example with GetX Controller + v1.0.2 Performance Features
 /// Uncomment if you're using GetX
 /*
-class ProductController extends GetxController {
+class ProductController extends GetxController with SmartStateMemoization {
   final _state = SmartState.loading.obs;
   final _products = <Product>[].obs;
   final _error = RxnString();
   final _hasMoreData = true.obs;
+  
+  // 💾 NEW v1.0.2: Use cache for efficient data management
+  final _cache = SmartStateCache<String, List<Product>>(maxSize: 100);
 
   SmartState get state => _state.value;
   List<Product> get products => _products;
@@ -951,6 +1304,14 @@ class ProductController extends GetxController {
       if (refresh) {
         _state.value = SmartState.loading;
         _products.clear();
+      } else {
+        // 💾 Check cache first
+        final cached = _cache.get('products');
+        if (cached != null && cached.isNotEmpty) {
+          _products.value = cached;
+          _state.value = SmartState.success;
+          return;
+        }
       }
       
       // Your API call here
@@ -959,8 +1320,11 @@ class ProductController extends GetxController {
       if (newProducts.isEmpty) {
         _state.value = SmartState.empty;
       } else {
-        _products.addAll(newProducts);
+        _products.value = newProducts;
         _state.value = SmartState.success;
+        
+        // 💾 Cache the result
+        _cache.put('products', newProducts);
       }
     } catch (e) {
       _error.value = e.toString();
@@ -979,6 +1343,9 @@ class ProductController extends GetxController {
         _hasMoreData.value = false;
       } else {
         _products.addAll(newProducts);
+        
+        // 💾 Update cache
+        _cache.put('products', _products);
       }
       
       _state.value = SmartState.success;
@@ -987,9 +1354,16 @@ class ProductController extends GetxController {
       // Handle pagination error separately if needed
     }
   }
+  
+  @override
+  void onClose() {
+    // 💾 Optionally clear cache on dispose
+    _cache.clear();
+    super.onClose();
+  }
 }
 
-// Usage in Widget
+// Usage in Widget with memoization
 class ProductsPage extends StatelessWidget {
   final ProductController controller = Get.put(ProductController());
   
@@ -997,16 +1371,126 @@ class ProductsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Obx(() => SmartStateHandler<List<Product>>(
-        state: controller.state,
-        data: controller.products.isNotEmpty ? controller.products : null,
-        error: controller.error,
-        hasMoreData: controller.hasMoreData,
-        onRetry: () => controller.fetchProducts(refresh: true),
-        onRefresh: () => controller.fetchProducts(refresh: true),
-        onLoadMore: controller.loadMore,
-        builder: (context, products) => ProductGrid(products: products),
+        currentState: controller.state,
+        successData: controller.products.isNotEmpty ? controller.products : null,
+        errorObject: controller.error,
+        hasMoreDataToLoad: controller.hasMoreData,
+        
+        // ⚡ NEW v1.0.2: Performance configurations
+        loadMoreDebounceMs: 300,  // Debounce pagination
+        enableDebugLogs: true,    // See cache/debounce in action
+        
+        onRetryPressed: () => controller.fetchProducts(refresh: true),
+        onPullToRefresh: () => controller.fetchProducts(refresh: true),
+        onLoadMoreData: controller.loadMore,
+        
+        successDataBuilder: (context, products) {
+          // ⚡ Use memoization for expensive widgets
+          return controller.memoize(
+            'product-grid',
+            () => GridView.builder(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 0.7,
+              ),
+              itemCount: products.length,
+              itemBuilder: (context, index) {
+                // 🔄 NEW v1.0.2: KeepAlive for grid items
+                return SmartStateKeepAlive(
+                  child: ProductCard(products[index]),
+                );
+              },
+            ),
+            [products.length], // Rebuild only when count changes
+          );
+        },
       )),
     );
   }
 }
 */
+
+/// Example with Provider + v1.0.2 Performance Features
+/// Uncomment if you're using Provider
+/*
+class ProductProvider extends ChangeNotifier with SmartStateMemoization {
+  SmartState _state = SmartState.loading;
+  List<Product> _products = [];
+  String? _error;
+  bool _hasMoreData = true;
+  
+  // 💾 NEW v1.0.2: Add cache
+  final _cache = SmartStateCache<String, List<Product>>(maxSize: 100);
+
+  SmartState get state => _state;
+  List<Product> get products => _products;
+  String? get error => _error;
+  bool get hasMoreData => _hasMoreData;
+
+  Future<void> fetchProducts({bool refresh = false}) async {
+    try {
+      if (!refresh) {
+        // 💾 Check cache first
+        final cached = _cache.get('products');
+        if (cached != null && cached.isNotEmpty) {
+          _products = cached;
+          _state = SmartState.success;
+          notifyListeners();
+          return;
+        }
+      }
+      
+      _state = SmartState.loading;
+      notifyListeners();
+      
+      final newProducts = await ApiService.getProducts();
+      
+      if (newProducts.isEmpty) {
+        _state = SmartState.empty;
+      } else {
+        _products = newProducts;
+        _state = SmartState.success;
+        
+        // 💾 Cache the data
+        _cache.put('products', newProducts);
+      }
+    } catch (e) {
+      _error = e.toString();
+      _state = SmartState.error;
+    }
+    notifyListeners();
+  }
+  
+  @override
+  void dispose() {
+    // 💾 Clean up cache
+    _cache.clear();
+    clearMemoCache(); // Clear memoization cache
+    super.dispose();
+  }
+}
+*/
+
+/// v1.0.2 Performance Tips:
+///
+/// 1. Use SmartStateCache for data caching:
+///    - Reduces API calls
+///    - Improves perceived performance
+///    - Automatic LRU cleanup
+///
+/// 2. Use SmartStateMemoization to prevent rebuilds:
+///    - Memoize expensive widget builders
+///    - Only rebuild when dependencies change
+///    - Clear cache when needed with clearMemoCache()
+///
+/// 3. Use SmartStateKeepAlive in lists:
+///    - Preserves widget state when scrolling
+///    - Better for forms and interactive items
+///    - Reduces unnecessary rebuilds
+///
+/// 4. Use const constructors for configs:
+///    static const _textConfig = SmartStateTextConfig(...);
+///    Enables Flutter optimizations
+///
+/// 5. Enable debouncing for pagination:
+///    loadMoreDebounceMs: 300 (prevents rapid-fire requests)

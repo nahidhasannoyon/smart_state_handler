@@ -1,7 +1,11 @@
 export 'src/configs/smart_state_animation_config.dart';
+export 'src/configs/smart_state_overlay_config.dart';
+export 'src/configs/smart_state_snackbar_config.dart';
 export 'src/configs/smart_state_text_config.dart';
 export 'src/configs/smart_state_widget_config.dart';
 export 'src/enums/smart_state_enum.dart';
 export 'src/enums/smart_state_transition_type_enum.dart';
 export 'src/extensions/smart_state_extension.dart';
 export 'src/smart_state_handler.dart';
+export 'src/utils/smart_state_cache.dart';
+export 'src/utils/smart_state_memoization.dart';

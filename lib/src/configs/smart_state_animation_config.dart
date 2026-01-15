@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:smart_state_handler/smart_state_handler.dart';
 
-
 /// Animation configuration for state transitions
+@immutable
 class SmartStateAnimationConfig {
   const SmartStateAnimationConfig({
     this.duration = const Duration(milliseconds: 300),

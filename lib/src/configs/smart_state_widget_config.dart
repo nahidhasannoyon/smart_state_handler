@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// Configuration class for customizing widget content
+@immutable
 class SmartStateWidgetConfig {
   const SmartStateWidgetConfig({
     this.retryButtonWidget,

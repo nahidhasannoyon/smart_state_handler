@@ -1,4 +1,7 @@
+import 'package:flutter/material.dart';
+
 /// Configuration class for customizing text content
+@immutable
 class SmartStateTextConfig {
   const SmartStateTextConfig({
     this.retryButtonText = 'Retry',
