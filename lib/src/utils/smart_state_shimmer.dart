@@ -86,29 +86,28 @@ class SmartStateSkeleton {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: Colors.grey[200]!),
           ),
-          child: Column(
+          child: const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  const SmartStateShimmer(
-                      width: 40, height: 40, borderRadius: 20),
-                  const SizedBox(width: 12),
+                  SmartStateShimmer(width: 40, height: 40, borderRadius: 20),
+                  SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         SmartStateShimmer(width: double.infinity, height: 16),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         SmartStateShimmer(width: 120, height: 12),
                       ],
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               SmartStateShimmer(width: double.infinity, height: 12),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               SmartStateShimmer(width: 200, height: 12),
             ],
           ),
@@ -141,14 +140,14 @@ class SmartStateSkeleton {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: Colors.grey[200]!),
           ),
-          child: Column(
+          child: const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SmartStateShimmer(
                   width: double.infinity, height: 60, borderRadius: 8),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               SmartStateShimmer(width: double.infinity, height: 16),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               SmartStateShimmer(width: 80, height: 12),
             ],
           ),

@@ -1,4 +1,4 @@
-import 'package:smart_state_handler/smart_state_handler.dart';
+import 'package:smart_state_handler/src/enums/smart_state_enum.dart';
 
 /// Service for managing SmartStateHandler internal state to prevent memory leaks
 /// and provide proper lifecycle management for shared state across widgets.
@@ -16,8 +16,11 @@ class SmartStateTrackingService {
   // Track load more triggers
   final Map<String, DateTime> _loadMoreTriggers = {};
 
-  // Generate unique keys for widgets
-  String generateKey() => '${DateTime.now().microsecondsSinceEpoch}_$hashCode';
+  // Generate stable keys for widgets based on an optional identifier
+  String generateKey([Object? widgetIdentifier]) {
+    final baseId = widgetIdentifier?.hashCode ?? hashCode;
+    return baseId.toString();
+  }
 
   /// Check if snackbar should be shown for given state and key
   bool shouldShowSnackbar(String key, SmartState currentState) {
