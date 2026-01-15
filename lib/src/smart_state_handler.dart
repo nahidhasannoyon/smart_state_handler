@@ -279,54 +279,31 @@ class SmartStateHandler<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Wrap with Builder to handle snackbar display in a stateless way
-    return Builder(
-      builder: (context) {
-        // Show snackbar if enabled and in error or success state
-        if (showErrorAsSnackbar && currentState.isError) {
+    // Schedule snackbar after build completes
+    if (showErrorAsSnackbar && currentState.isError) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) {
           _scheduleSnackbar(context, SnackbarType.error);
-        } else if (snackbarConfig.showSuccessSnackbar &&
-            currentState.isSuccess) {
+        }
+      });
+    } else if (snackbarConfig.showSuccessSnackbar && currentState.isSuccess) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) {
           _scheduleSnackbar(context, SnackbarType.success);
         }
+      });
+    }
 
-        return _buildMainContent(context);
-      },
-    );
+    return _buildMainContent(context);
   }
 
-  // Track the last state we showed a snackbar for to avoid showing multiple times
-  // Using a weak reference approach with timestamp to prevent memory leaks
-  static final Map<int, ({SmartState state, DateTime timestamp})>
-      _lastSnackbarStates = {};
-  static const _snackbarCooldownMs =
-      500; // Prevent duplicate snackbars within 500ms
-
   void _scheduleSnackbar(BuildContext context, SnackbarType type) {
-    final widgetHash = hashCode;
-    final now = DateTime.now();
-    final lastEntry = _lastSnackbarStates[widgetHash];
-
-    // Only schedule if we haven't shown a snackbar for this state recently
-    final shouldShow = lastEntry == null ||
-        lastEntry.state != currentState ||
-        now.difference(lastEntry.timestamp).inMilliseconds >
-            _snackbarCooldownMs;
+    final trackingService = SmartStateTrackingService();
+    final uniqueKey = trackingService.generateKey();
+    final shouldShow =
+        trackingService.shouldShowSnackbar(uniqueKey, currentState);
 
     if (shouldShow) {
-      _lastSnackbarStates[widgetHash] = (state: currentState, timestamp: now);
-
-      // Clean up old entries to prevent memory leak (keep last 100 entries)
-      if (_lastSnackbarStates.length > 100) {
-        final sortedKeys = _lastSnackbarStates.keys.toList()
-          ..sort((a, b) => _lastSnackbarStates[a]!
-              .timestamp
-              .compareTo(_lastSnackbarStates[b]!.timestamp));
-        for (var i = 0; i < 50; i++) {
-          _lastSnackbarStates.remove(sortedKeys[i]);
-        }
-      }
-
       SchedulerBinding.instance.addPostFrameCallback((_) {
         if (!context.mounted) return;
 
@@ -790,24 +767,47 @@ class SmartStateHandler<T> extends StatelessWidget {
       return skeletonLoadingBuilder!(context);
     }
 
+    // Built-in shimmer support
+    if (enableSkeletonLoading) {
+      if (widgetConfig.skeletonShimmerWidget != null) {
+        return Semantics(
+          label: 'Loading skeleton content',
+          liveRegion: true,
+          child: widgetConfig.skeletonShimmerWidget!,
+        );
+      } else {
+        // Use default skeleton list
+        return Semantics(
+          label: 'Loading skeleton content',
+          liveRegion: true,
+          child: SmartStateSkeleton.list(
+              itemCount: widgetConfig.skeletonItemCount),
+        );
+      }
+    }
+
     final loadingText = customLoadingMessage ?? textConfig.loadingText;
 
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          if (loadingIcon != null) ...[
-            Icon(loadingIcon, size: 48, color: loadingIndicatorColor),
-            const SizedBox(height: 16),
-          ] else ...[
-            CircularProgressIndicator(color: loadingIndicatorColor),
-            const SizedBox(height: 16),
+    return Semantics(
+      label: 'Loading data, please wait',
+      liveRegion: true,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (loadingIcon != null) ...[
+              Icon(loadingIcon, size: 48, color: loadingIndicatorColor),
+              const SizedBox(height: 16),
+            ] else ...[
+              CircularProgressIndicator(color: loadingIndicatorColor),
+              const SizedBox(height: 16),
+            ],
+            Text(
+              loadingText,
+              style: TextStyle(color: loadingIndicatorColor, fontSize: 16),
+            ),
           ],
-          Text(
-            loadingText,
-            style: TextStyle(color: loadingIndicatorColor, fontSize: 16),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -817,31 +817,45 @@ class SmartStateHandler<T> extends StatelessWidget {
       return errorStateBuilder!(context, errorObject);
     }
 
-    final errorText = errorObject?.toString() ?? textConfig.defaultErrorText;
+    final errorText = _sanitizeErrorMessage(errorObject);
 
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(errorIcon, size: 64, color: errorDisplayColor ?? Colors.red),
-          const SizedBox(height: 16),
-          Text(
-            errorText,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: errorDisplayColor ?? Colors.red,
-              fontSize: 16,
+    return Semantics(
+      label: 'Error occurred: $errorText',
+      liveRegion: true,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Semantics(
+              label: 'Error icon',
+              child: Icon(errorIcon,
+                  size: 64, color: errorDisplayColor ?? Colors.red),
             ),
-          ),
-          if (onRetryPressed != null) ...[
-            const SizedBox(height: 24),
-            widgetConfig.retryButtonWidget ??
-                ElevatedButton(
-                  onPressed: onRetryPressed,
-                  child: Text(textConfig.retryButtonText),
-                ),
+            const SizedBox(height: 16),
+            Text(
+              errorText,
+              textAlign: TextAlign.center,
+              maxLines: 5,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: errorDisplayColor ?? Colors.red,
+                fontSize: 16,
+              ),
+            ),
+            if (onRetryPressed != null) ...[
+              const SizedBox(height: 24),
+              Semantics(
+                button: true,
+                label: 'Retry button, tap to retry loading',
+                child: widgetConfig.retryButtonWidget ??
+                    ElevatedButton(
+                      onPressed: onRetryPressed,
+                      child: Text(textConfig.retryButtonText),
+                    ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -911,7 +925,8 @@ class SmartStateHandler<T> extends StatelessWidget {
   }
 
   Widget _buildSuccessState(BuildContext context) {
-    if (successData == null) {
+    final data = successData;
+    if (data == null) {
       return _buildEmptyState(context);
     }
 
@@ -924,7 +939,7 @@ class SmartStateHandler<T> extends StatelessWidget {
       );
     }
 
-    Widget content = successDataBuilder!(context, successData as T);
+    Widget content = successDataBuilder!(context, data);
 
     // Add pagination support if needed
     if (onLoadMoreData != null &&
@@ -934,9 +949,6 @@ class SmartStateHandler<T> extends StatelessWidget {
 
     return content;
   }
-
-  // Track last load more trigger to implement debounce
-  static final Map<int, DateTime> _lastLoadMoreTriggers = {};
 
   Widget _wrapWithPagination(Widget content) {
     return NotificationListener<ScrollNotification>(
@@ -949,28 +961,11 @@ class SmartStateHandler<T> extends StatelessWidget {
           if (maxScroll - pixels <= autoScrollThreshold &&
               hasMoreDataToLoad &&
               !currentState.isLoadingMore) {
-            // Prevent multiple simultaneous loads
-
-            final now = DateTime.now();
-            final widgetHash = hashCode;
-            final lastTrigger = _lastLoadMoreTriggers[widgetHash];
-
-            // Implement debounce
-            if (lastTrigger == null ||
-                now.difference(lastTrigger).inMilliseconds >=
-                    loadMoreDebounceMs) {
-              _lastLoadMoreTriggers[widgetHash] = now;
-
-              // Clean up old entries to prevent memory leak
-              if (_lastLoadMoreTriggers.length > 50) {
-                final sortedKeys = _lastLoadMoreTriggers.keys.toList()
-                  ..sort((a, b) => _lastLoadMoreTriggers[a]!
-                      .compareTo(_lastLoadMoreTriggers[b]!));
-                for (var i = 0; i < 25; i++) {
-                  _lastLoadMoreTriggers.remove(sortedKeys[i]);
-                }
-              }
-
+            // Use tracking service for proper debouncing
+            final trackingService = SmartStateTrackingService();
+            final uniqueKey = trackingService.generateKey();
+            if (trackingService.shouldTriggerLoadMore(
+                uniqueKey, loadMoreDebounceMs)) {
               _debugLog('Triggering load more data');
               SchedulerBinding.instance.addPostFrameCallback((_) {
                 onLoadMoreData?.call();
@@ -984,5 +979,22 @@ class SmartStateHandler<T> extends StatelessWidget {
       },
       child: content,
     );
+  }
+
+  /// Sanitize error messages to prevent XSS and limit length
+  String _sanitizeErrorMessage(dynamic errorObject) {
+    if (errorObject == null) {
+      return textConfig.defaultErrorText;
+    }
+
+    final errorStr = errorObject.toString();
+
+    // Truncate very long errors
+    if (errorStr.length > 500) {
+      return '${errorStr.substring(0, 497)}...';
+    }
+
+    // Remove any HTML tags (basic sanitization)
+    return errorStr.replaceAll(RegExp(r'<[^>]*>'), '');
   }
 }
